@@ -1,0 +1,6 @@
+yfinance==0.2.18
+pandas==1.5.3
+numpy==1.23.5
+scipy==1.10.1
+coinbase==2.1.0
+openai==0.27.8
