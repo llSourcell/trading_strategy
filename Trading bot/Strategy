@@ -1,0 +1,111 @@
+/** @jsxImportSource https://esm.sh/react@18.2.0 */
+import React, { useState, useEffect } from "https://esm.sh/react@18.2.0";
+import { createRoot } from "https://esm.sh/react-dom@18.2.0/client";
+
+// Simulated trading data fetching
+async function fetchHistoricalData(symbol: string, timeframe = '1h', limit = 100) {
+  // Using a free cryptocurrency price API as a stand-in
+  const response = await fetch(`https://api.coingecko.com/api/v3/coins/${symbol}/market_chart?vs_currency=usd&days=${limit}`);
+  const data = await response.json();
+  
+  return data.prices.map((price: [number, number], index: number) => ({
+    timestamp: new Date(price[0]),
+    close: price[1],
+    // Simulating other OHLCV values
+    open: price[1] * (1 + Math.random() * 0.01),
+    high: price[1] * (1 + Math.random() * 0.02),
+    low: price[1] * (1 - Math.random() * 0.01),
+    volume: Math.random() * 1000000
+  })).slice(-limit);
+}
+
+// Simulated trading strategy
+function simpleStrategy(data: any[]) {
+  const closes = data.map(d => d.close);
+  const sma50 = calculateSMA(closes, 50);
+  const sma200 = calculateSMA(closes, 200);
+  
+  return {
+    data,
+    signal: sma50[sma50.length - 1] > sma200[sma200.length - 1]
+  };
+}
+
+// Simple Moving Average calculation
+function calculateSMA(data: number[], period: number): number[] {
+  return data.map((_, index, array) => {
+    if (index < period - 1) return 0;
+    const slice = array.slice(index - period + 1, index + 1);
+    return slice.reduce((a, b) => a + b, 0) / period;
+  });
+}
+
+function TradingSimulator() {
+  const [data, setData] = useState<any[]>([]);
+  const [strategyResult, setStrategyResult] = useState<{ signal: boolean }>({ signal: false });
+
+  useEffect(() => {
+    async function runStrategy() {
+      try {
+        const historicalData = await fetchHistoricalData('bitcoin');
+        const result = simpleStrategy(historicalData);
+        setData(historicalData);
+        setStrategyResult(result);
+      } catch (error) {
+        console.error("Strategy simulation error:", error);
+      }
+    }
+    
+    runStrategy();
+  }, []);
+
+  return (
+    <div style={{ fontFamily: 'Arial, sans-serif', maxWidth: '600px', margin: 'auto', padding: '20px' }}>
+      <h1>🤖 Trading Strategy Simulator</h1>
+      <div>
+        <h2>Strategy Analysis: Bitcoin</h2>
+        <p>Trading Signal: {strategyResult.signal ? '🟢 BUY' : '🔴 HOLD'}</p>
+        <p>Last Close Price: {data.length > 0 ? `$${data[data.length - 1].close.toFixed(2)}` : 'Loading...'}</p>
+      </div>
+      <div>
+        <h3>Disclaimer</h3>
+        <p>This is a simulation. Not financial advice. Real trading involves significant risk.</p>
+      </div>
+      <a 
+        href={import.meta.url.replace("esm.town", "val.town")} 
+        target="_top" 
+        style={{ color: '#666', textDecoration: 'none' }}
+      >
+        View Source
+      </a>
+    </div>
+  );
+}
+
+function App() {
+  return <TradingSimulator />;
+}
+
+function client() {
+  createRoot(document.getElementById("root")).render(<App />);
+}
+
+if (typeof document !== "undefined") { client(); }
+
+export default async function server(request: Request): Promise<Response> {
+  return new Response(`
+    <html>
+      <head>
+        <title>Trading Strategy Simulator</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+      </head>
+      <body>
+        <div id="root"></div>
+        <script src="https://esm.town/v/std/catch"></script>
+        <script type="module" src="${import.meta.url}"></script>
+      </body>
+    </html>
+  `, {
+    headers: { "content-type": "text/html" }
+  });
+}
